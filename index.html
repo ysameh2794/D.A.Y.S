@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="description" content="تطبيق إدارة محاضر الإزالات" />
+  <meta name="theme-color" content="#1976d2" />
+  <title>محاضر الإزالات</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --primary: #1976d2;
+      --success: #4caf50;
+      --danger: #f44336;
+      --warning: #ff9800;
+      --light-bg: #fafafa;
+      --dark-bg: #121212;
+      --panel-dark: #1e1e1e;
+      --panel-light: #ffffff;
+      --input-dark: #2a2a2a;
+      --border-dark: #444;
+    }
+
+    html, body { height: 100%; overflow-x: hidden; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--dark-bg);
+      color: #fff;
+      transition: all 0.3s ease;
+    }
+
+    body.light-mode {
+      background-color: var(--light-bg);
+      color: #212121;
+    }
+
+    .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+
+    header {
+      background: linear-gradient(135deg, var(--primary), #1565c0);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h1 { font-size: 28px; font-weight: bold; }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary { background-color: var(--primary); color: white; }
+    .btn-primary:hover { background-color: #1565c0; }
+
+    .btn-success { background-color: var(--success); color: white; }
+    .btn-success:hover { background-color: #45a049; }
+
+    .btn-danger { background-color: var(--danger); color: white; }
+    .btn-danger:hover { background-color: #da190b; }
+
+    .btn-warning { background-color: var(--warning); color: white; }
+    .btn-warning:hover { background-color: #fb8c00; }
+
+    .btn-small { padding: 6px 12px; font-size: 12px; }
+
+    .theme-toggle {
+      background-color: rgba(255,255,255,0.2);
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .stats-top {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: linear-gradient(135deg, var(--primary), #1565c0);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .stat-box h3 { font-size: 32px; font-weight: bold; margin-bottom: 5px; }
+    .stat-box p { font-size: 13px; opacity: 0.9; }
+
+    .panel {
+      background: var(--panel-dark);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      margin-bottom: 20px;
+    }
+
+    body.light-mode .panel { background: var(--panel-light); }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--primary);
+      color: #fff;
+    }
+
+    body.light-mode .panel-title { color: #212121; }
+
+    .filter-section {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border-dark);
+      border-radius: 5px;
+      font-size: 13px;
+      background-color: var(--input-dark);
+      color: #fff;
+    }
+
+    body.light-mode input,
+    body.light-mode select {
+      background-color: #fff;
+      color: #212121;
+      border-color: #e0e0e0;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .actions-section {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      border-radius: 5px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel-dark);
+      font-size: 12px;
+    }
+
+    body.light-mode table { background: white; }
+
+    thead {
+      background-color: var(--primary);
+      color: white;
+      position: sticky;
+      top: 0;
+    }
+
+    th, td {
+      padding: 8px 5px;
+      border-bottom: 1px solid var(--border-dark);
+      text-align: right;
+      color: #fff;
+      vertical-align: middle;
+    }
+
+    body.light-mode th,
+    body.light-mode td {
+      border-bottom: 1px solid #e0e0e0;
+      color: #212121;
+    }
+
+    tr:hover { background-color: #2a2a2a; }
+    body.light-mode tr:hover { background-color: #f0f0f0; }
+
+    .checkbox { width: 18px; height: 18px; cursor: pointer; }
+    .status-badge { padding: 4px 8px; border-radius: 3px; font-size: 12px; color: white; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-content {
+      background: var(--panel-dark);
+      padding: 30px;
+      border-radius: 8px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+      color: #fff;
+      position: relative;
+    }
+
+    body.light-mode .modal-content {
+      background: white;
+      color: #212121;
+    }
+
+    .modal-content h2 { margin-bottom: 20px; }
+
+    .form-group { margin-bottom: 15px; }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #fff;
+      font-size: 13px;
+    }
+
+    body.light-mode .form-group label { color: #212121; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 25px;
+      flex-wrap: wrap;
+    }
+
+    .success-message {
+      background-color: #1b5e20;
+      color: #81c784;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    body.light-mode .success-message {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .images-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .image-item {
+      position: relative;
+      border-radius: 5px;
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .image-item img {
+      width: 100%;
+      height: 100px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .image-item .remove-img {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #mapContainer {
+      width: 100%;
+      height: 500px;
+      min-height: 500px;
+      border-radius: 8px;
+      margin-top: 15px;
+      overflow: hidden;
+      background: #ddd;
+    }
+
+    .map-instructions {
+      background: #2a3f2a;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      border-right: 4px solid #81c784;
+    }
+
+    .map-instructions h4 {
+      color: #81c784;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .map-instructions p,
+    .map-instructions ol,
+    .map-instructions li {
+      color: #a5d6a7;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .map-instructions ol { margin-right: 20px; }
+    .map-instructions li { margin-bottom: 5px; }
+
+    body.light-mode .map-instructions {
+      background: #fff3cd;
+      border-right-color: #ff9800;
+    }
+
+    body.light-mode .map-instructions h4 { color: #ff6f00; }
+    body.light-mode .map-instructions p,
+    body.light-mode .map-instructions ol,
+    body.light-mode .map-instructions li { color: #ff9800; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .charts-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+
+    .details-modal-close {
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 15px;
+    }
+
+    .point-info {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #81c784;
+      line-height: 1.8;
+    }
+
+    .coords-box {
+      background: #1a2a1a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    body.light-mode .coords-box {
+      background: #f0f7f0;
+      border-color: #c8e6c9;
+    }
+
+    .coords-box .coords-label {
+      font-size: 12px;
+      color: #81c784;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    body.light-mode .coords-box .coords-label { color: #2e7d32; }
+
+    @media (max-width: 768px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .charts-section { grid-template-columns: 1fr; }
+      .stats-top { grid-template-columns: 1fr; }
+      header { flex-direction: column; gap: 15px; }
+      h1 { font-size: 20px; }
+      .container { padding: 10px; }
+      table { font-size: 10px; }
+      th, td { padding: 5px 3px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📋 محاضر الإزالات</h1>
+    <p style="font-size: 14px; opacity: 0.9;">إدارة البيانات مع الصور والخريطة</p>
+  </div>
+  <button class="theme-toggle" onclick="toggleDarkMode()">
+    <span id="themeIcon">☀️</span>
+  </button>
+</header>
+
+<div class="container">
+  <div class="stats-top">
+    <div class="stat-box">
+      <h3 id="totalStats">0</h3>
+      <p>إجمالي المحاضر</p>
+    </div>
+    <div class="stat-box" style="background: linear-gradient(135deg, #4caf50, #388e3c);">
+      <h3 id="filteredStats">0</h3>
+      <p>نتائج الفلتر</p>
+    </div>
+    <div class="stat-box" style="background: linear-gradient(135deg, #ff9800, #f57c00);">
+      <h3 id="selectedStats">0</h3>
+      <p>محاضر مختارة</p>
+    </div>
+  </div>
+
+  <div class="success-message" id="successMessage"></div>
+
+  <div class="panel">
+    <div class="panel-title">🔍 البحث والفلاتر</div>
+    <div class="filter-section">
+      <input type="text" id="filterName" placeholder="اسم المخالف">
+      <input type="text" id="filterBranch" placeholder="المصرف">
+      <input type="text" id="filterDescription" placeholder="المخالفة">
+      <input type="number" id="filterAreaFrom" placeholder="المساحة من" step="0.01">
+      <input type="number" id="filterAreaTo" placeholder="المساحة إلى" step="0.01">
+      <input type="number" id="filterRecordNumber" placeholder="رقم المحضر">
+      <input type="number" id="filterYear" placeholder="السنة">
+      <input type="number" id="filterRemovalNumber" placeholder="رقم قرار الإزالة">
+      <input type="number" id="filterValue" placeholder="القيمة">
+      <input type="date" id="filterDateFrom" placeholder="من التاريخ">
+      <input type="date" id="filterDateTo" placeholder="إلى التاريخ">
+      <input type="text" id="filterVillage" placeholder="البلد">
+      <input type="text" id="filterCenter" placeholder="المركز">
+      <select id="filterStatus">
+        <option value="">الحالة (الكل)</option>
+        <option>منفذة</option>
+        <option>قيد التنفيذ</option>
+        <option>معلقة</option>
+      </select>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button class="btn-primary" onclick="applyFilters()">🔎 بحث</button>
+      <button class="btn-danger btn-small" onclick="clearFilters()">مسح الفلاتر</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">⚙️ الإجراءات</div>
+    <div class="actions-section">
+      <button class="btn-primary" onclick="openAddModal()">➕ إضافة</button>
+      <button class="btn-success" onclick="importExcel()">📥 استيراد</button>
+      <button class="btn-success" onclick="exportToExcel()">📤 تصدير</button>
+      <button class="btn-success" onclick="exportToPDF()">📄 PDF</button>
+      <button class="btn-warning" onclick="showKMLExportOptions()">🗺️ KML</button>
+      <button class="btn-primary" onclick="document.getElementById('kmlDrainsFile').click()">🌊 رفع المصارف</button>
+      <button class="btn-danger" onclick="deleteSelected()">🗑️ حذف</button>
+      <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; color: #fff;">
+        <input type="checkbox" id="selectAll" onchange="selectAllRecords(this.checked)"> الكل
+      </label>
+      <input type="file" id="excelFile" style="display:none" accept=".xlsx,.xls">
+      <input type="file" id="kmlDrainsFile" style="display:none" accept=".kml">
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">📊 البيانات</div>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 30px;">✓</th>
+            <th style="width: 30px;">#</th>
+            <th>المخالف</th>
+            <th>المصرف</th>
+            <th>المخالفة</th>
+            <th>المساحة</th>
+            <th>المحضر</th>
+            <th>القرار</th>
+            <th>القيمة</th>
+            <th>البلد</th>
+            <th>المركز</th>
+            <th>التاريخ</th>
+            <th>الحالة</th>
+            <th>الموقع</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="15" class="empty-state">لا توجد بيانات</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">📈 الرسوم البيانية</div>
+    <div class="charts-section">
+      <div>
+        <p style="font-weight:600; margin-bottom:10px; text-align:center;">عدد المحاضر بالسنة</p>
+        <div class="chart-container">
+          <canvas id="barChart"></canvas>
+        </div>
+      </div>
+      <div>
+        <p style="font-weight:600; margin-bottom:10px; text-align:center;">توزيع الحالات</p>
+        <div class="chart-container">
+          <canvas id="pieChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="addModal">
+  <div class="modal-content">
+    <h2 id="modalTitle">إضافة محضر جديد</h2>
+    <form id="addForm">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>اسم المخالف *</label>
+          <input type="text" id="formName" required>
+        </div>
+        <div class="form-group">
+          <label>المصرف</label>
+          <input type="text" id="formBranch">
+        </div>
+        <div class="form-group">
+          <label>المخالفة</label>
+          <input type="text" id="formDescription">
+        </div>
+        <div class="form-group">
+          <label>المساحة (م²)</label>
+          <input type="number" id="formArea" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>رقم المحضر *</label>
+          <input type="number" id="formRecordNumber" required>
+        </div>
+        <div class="form-group">
+          <label>سنة المحضر *</label>
+          <input type="number" id="formYear" required>
+        </div>
+        <div class="form-group">
+          <label>رقم قرار الإزالة</label>
+          <input type="number" id="formRemovalDecisionNumber">
+        </div>
+        <div class="form-group">
+          <label>سنة القرار</label>
+          <input type="number" id="formRemovalDecisionYear">
+        </div>
+        <div class="form-group">
+          <label>البر</label>
+          <input type="text" id="formField">
+        </div>
+        <div class="form-group">
+          <label>الكيلومتر</label>
+          <input type="number" id="formKilometer" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>القيمة</label>
+          <input type="number" id="formValue" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>البلد</label>
+          <input type="text" id="formVillage">
+        </div>
+        <div class="form-group">
+          <label>المركز</label>
+          <input type="text" id="formCenter">
+        </div>
+        <div class="form-group">
+          <label>اليوم</label>
+          <input type="number" id="formDay" min="1" max="31">
+        </div>
+        <div class="form-group">
+          <label>الشهر</label>
+          <input type="number" id="formMonth" min="1" max="12">
+        </div>
+        <div class="form-group">
+          <label>السنة (التاريخ)</label>
+          <input type="number" id="formDateYear">
+        </div>
+        <div class="form-group">
+          <label>الحالة</label>
+          <select id="formStatus">
+            <option>معلقة</option>
+            <option>قيد التنفيذ</option>
+            <option>منفذة</option>
+          </select>
+          <input type="hidden" id="formOriginalStatus">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>🖼️ الصور</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button type="button" class="btn-primary" onclick="capturePhoto()">📷 التقط</button>
+          <button type="button" class="btn-primary" onclick="document.getElementById('photoInput').click()">📁 اختر</button>
+        </div>
+        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="addPhotoFromFile(event)" multiple>
+        <div class="images-gallery" id="imagesGallery"></div>
+      </div>
+
+      <div class="form-group">
+        <label>📍 الموقع</label>
+        <div class="coords-box">
+          <div class="coords-label">إدخال الإحداثيات يدوياً</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+            <div>
+              <label style="font-size:11px; color:#aaa; margin-bottom:4px; display:block;">خط العرض يبدأ بـ 29 أو 30</label>
+              <input type="number" id="inputLat" step="0.000001" placeholder="مثال: 29.321650">
+            </div>
+            <div>
+              <label style="font-size:11px; color:#aaa; margin-bottom:4px; display:block;">خط الطول يبدأ بـ 30 أو 31 أو 32</label>
+              <input type="number" id="inputLng" step="0.000001" placeholder="مثال: 31.254661">
+            </div>
+          </div>
+          <button type="button" class="btn-success" style="width:100%;" onclick="setLocationFromInputs()">📍 تأكيد الإحداثيات</button>
+        </div>
+        <button type="button" class="btn-primary" style="width:100%;" onclick="openMapModal()">🗺️ أو تحديد على الخريطة</button>
+        <div id="mapPreview" class="point-info"></div>
+      </div>
+
+      <div class="modal-buttons">
+        <button type="button" class="btn-danger" onclick="closeModal()">إلغاء</button>
+        <button type="submit" class="btn-success">💾 حفظ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="mapModal">
+  <div class="modal-content" style="max-width: 95vw;">
+    <h2>📍 اختيار نقطة على الخريطة</h2>
+
+    <div class="map-instructions">
+      <h4>📌 التعليمات:</h4>
+      <ol>
+        <li>اضغط مرة واحدة على الخريطة لتحديد مركز المخالفة</li>
+        <li>سيظهر Marker في المكان المختار</li>
+        <li>يمكنك الضغط مرة أخرى لتغيير الموقع</li>
+        <li>ثم اضغط "💾 حفظ الموقع"</li>
+      </ol>
+    </div>
+
+    <div id="mapContainer"></div>
+
+    <div class="modal-buttons">
+      <button class="btn-danger" onclick="closeMapModal()">إلغاء</button>
+      <button class="btn-success" onclick="saveMapPoint()">💾 حفظ الموقع</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="kmlModal">
+  <div class="modal-content" style="max-width: 500px;">
+    <h2>تصدير KML</h2>
+    <p style="margin-bottom: 20px; color: #a5d6a7;">اختر طريقة التصدير:</p>
+    <div style="display: grid; gap: 10px;">
+      <button class="btn-success" style="text-align: left; padding: 15px;" onclick="exportKMLSeparate()">
+        📁 KML منفصل لكل محضر
+      </button>
+      <button class="btn-success" style="text-align: left; padding: 15px;" onclick="exportKMLSingle()">
+        📦 KML واحد لكل المحاضر
+      </button>
+    </div>
+    <div class="modal-buttons" style="margin-top: 20px;">
+      <button class="btn-danger" onclick="closeKMLModal()">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let allData = [];
+  let filteredData = [];
+  let selectedRows = new Set();
+  let currentEditId = null;
+  let mapInstance = null;
+  let currentPhotos = [];
+  let currentPoint = null;
+  let currentMarker = null;
+  let barChartInstance = null;
+  let pieChartInstance = null;
+  let drainsData = [];
+
+  const DEFAULT_AREA = 41;
+  const LENGTH_WIDTH_RATIO = 1.3;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadDataFromStorage();
+    filteredData = [...allData];
+    renderTable();
+    updateStats();
+    renderCharts();
+    setupEventListeners();
+
+    if (localStorage.getItem('darkMode') !== 'light') {
+      document.body.classList.remove('light-mode');
+      document.getElementById('themeIcon').textContent = '☀️';
+      localStorage.setItem('darkMode', 'dark');
+    } else {
+      document.body.classList.add('light-mode');
+      document.getElementById('themeIcon').textContent = '🌙';
+    }
+  });
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function xmlEscape(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&apos;');
+  }
+
+  function loadDataFromStorage() {
+    try {
+      const data = localStorage.getItem('drainageData');
+      allData = data ? JSON.parse(data) : [];
+    } catch (error) {
+      console.error('خطأ في تحميل البيانات:', error);
+      allData = [];
+    }
+  }
+
+  function saveDataToStorage() {
+    localStorage.setItem('drainageData', JSON.stringify(allData));
+  }
+
+  function setupEventListeners() {
+    document.getElementById('filterName').addEventListener('input', applyFilters);
+    document.getElementById('filterBranch').addEventListener('input', applyFilters);
+    document.getElementById('filterDescription').addEventListener('input', applyFilters);
+    document.getElementById('filterAreaFrom').addEventListener('input', applyFilters);
+    document.getElementById('filterAreaTo').addEventListener('input', applyFilters);
+    document.getElementById('filterRecordNumber').addEventListener('input', applyFilters);
+    document.getElementById('filterYear').addEventListener('input', applyFilters);
+    document.getElementById('filterRemovalNumber').addEventListener('input', applyFilters);
+    document.getElementById('filterValue').addEventListener('input', applyFilters);
+    document.getElementById('filterDateFrom').addEventListener('change', applyFilters);
+    document.getElementById('filterDateTo').addEventListener('change', applyFilters);
+    document.getElementById('filterVillage').addEventListener('input', applyFilters);
+    document.getElementById('filterCenter').addEventListener('input', applyFilters);
+    document.getElementById('filterStatus').addEventListener('change', applyFilters);
+    document.getElementById('addForm').addEventListener('submit', saveRecord);
+    document.getElementById('excelFile').addEventListener('change', handleExcelImport);
+    document.getElementById('kmlDrainsFile').addEventListener('change', handleKMLDrainsImport);
+  }
+
+  function applyFilters() {
+    const name = document.getElementById('filterName').value.trim().toLowerCase();
+    const branch = document.getElementById('filterBranch').value.trim().toLowerCase();
+    const description = document.getElementById('filterDescription').value.trim().toLowerCase();
+    const areaFrom = document.getElementById('filterAreaFrom').value;
+    const areaTo = document.getElementById('filterAreaTo').value;
+    const recordNumber = document.getElementById('filterRecordNumber').value;
+    const year = document.getElementById('filterYear').value;
+    const removalNumber = document.getElementById('filterRemovalNumber').value;
+    const value = document.getElementById('filterValue').value;
+    const dateFrom = document.getElementById('filterDateFrom').value;
+    const dateTo = document.getElementById('filterDateTo').value;
+    const village = document.getElementById('filterVillage').value.trim().toLowerCase();
+    const center = document.getElementById('filterCenter').value.trim().toLowerCase();
+    const status = document.getElementById('filterStatus').value;
+
+    filteredData = allData.filter(item => {
+      const itemDate = (item.dateYear && item.month && item.day)
+        ? `${item.dateYear}-${String(item.month).padStart(2, '0')}-${String(item.day).padStart(2, '0')}`
+        : '';
+
+      const itemArea = (item.area !== null && item.area !== undefined && item.area !== '') ? parseFloat(item.area) : null;
+      const itemValue = (item.value !== null && item.value !== undefined && item.value !== '') ? parseFloat(item.value) : null;
+
+      return (!name || (item.name || '').toLowerCase().includes(name)) &&
+             (!branch || (item.branch || '').toLowerCase().includes(branch)) &&
+             (!description || (item.description || '').toLowerCase().includes(description)) &&
+             (!areaFrom || (itemArea !== null && itemArea >= parseFloat(areaFrom))) &&
+             (!areaTo || (itemArea !== null && itemArea <= parseFloat(areaTo))) &&
+             (!recordNumber || item.recordNumber == recordNumber) &&
+             (!year || item.year == year) &&
+             (!removalNumber || item.removalDecisionNumber == removalNumber) &&
+             (!value || (itemValue !== null && itemValue == parseFloat(value))) &&
+             (!dateFrom || (itemDate && itemDate >= dateFrom)) &&
+             (!dateTo || (itemDate && itemDate <= dateTo)) &&
+             (!village || (item.village || '').toLowerCase().includes(village)) &&
+             (!center || (item.center || '').toLowerCase().includes(center)) &&
+             (!status || item.status === status);
+    });
+
+    selectedRows.clear();
+    document.getElementById('selectAll').checked = false;
+    renderTable();
+    updateStats();
+  }
+
+  function clearFilters() {
+    document.getElementById('filterName').value = '';
+    document.getElementById('filterBranch').value = '';
+    document.getElementById('filterDescription').value = '';
+    document.getElementById('filterAreaFrom').value = '';
+    document.getElementById('filterAreaTo').value = '';
+    document.getElementById('filterRecordNumber').value = '';
+    document.getElementById('filterYear').value = '';
+    document.getElementById('filterRemovalNumber').value = '';
+    document.getElementById('filterValue').value = '';
+    document.getElementById('filterDateFrom').value = '';
+    document.getElementById('filterDateTo').value = '';
+    document.getElementById('filterVillage').value = '';
+    document.getElementById('filterCenter').value = '';
+    document.getElementById('filterStatus').value = '';
+    applyFilters();
+  }
+
+  function updateStats() {
+    document.getElementById('totalStats').textContent = allData.length;
+    document.getElementById('filteredStats').textContent = filteredData.length;
+    document.getElementById('selectedStats').textContent = selectedRows.size;
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+
+    if (filteredData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="15" class="empty-state">لا توجد نتائج</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filteredData.map((item, index) => `
+      <tr>
+        <td><input type="checkbox" class="checkbox" ${selectedRows.has(item.id) ? 'checked' : ''} onchange="toggleSelect(${item.id}, this.checked)"></td>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(item.name)}</td>
+        <td>${escapeHtml(item.branch || '-')}</td>
+        <td>${escapeHtml(item.description || '-')}</td>
+        <td>${item.area ?? '-'}</td>
+        <td>${escapeHtml(item.recordNumber + '/' + item.year)}</td>
+        <td>${item.removalDecisionNumber && item.removalDecisionYear ? escapeHtml(item.removalDecisionNumber + '/' + item.removalDecisionYear) : '-'}</td>
+        <td>${item.value ?? '-'}</td>
+        <td>${escapeHtml(item.village || '-')}</td>
+        <td>${escapeHtml(item.center || '-')}</td>
+        <td>${item.day && item.month && item.dateYear ? escapeHtml(item.day + '/' + item.month + '/' + item.dateYear) : '-'}</td>
+        <td><span class="status-badge" style="background:${getStatusColor(item.status)}">${escapeHtml(item.status || '-')}</span></td>
+        <td>${item.location && item.location.lat ? '📍 محدد' : '-'}</td>
+        <td style="display: flex; gap: 3px; flex-wrap: wrap;">
+          <button class="btn-primary btn-small" onclick="editRecord(${item.id})">✏️</button>
+          <button class="btn-warning btn-small" onclick="viewDetails(${item.id})">👁️</button>
+          <button class="btn-danger btn-small" onclick="deleteRecord(${item.id})">🗑️</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function getStatusColor(status) {
+    const colors = {
+      'منفذة': '#4caf50',
+      'قيد التنفيذ': '#ff9800',
+      'معلقة': '#f44336'
+    };
+    return colors[status] || '#666';
+  }
+
+  function toggleSelect(id, checked) {
+    if (checked) selectedRows.add(id);
+    else selectedRows.delete(id);
+    updateStats();
+  }
+
+  function selectAllRecords(checked) {
+    selectedRows.clear();
+    if (checked) filteredData.forEach(item => selectedRows.add(item.id));
+    document.querySelectorAll('.checkbox').forEach(cb => cb.checked = checked);
+    updateStats();
+  }
+
+  function capturePhoto() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = (e) => addPhotoFromFile({ target: { files: e.target.files } });
+    input.click();
+  }
+
+  function addPhotoFromFile(event) {
+    const files = event.target.files;
+    if (!files) return;
+
+    for (let file of files) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentPhotos.push({
+          id: Date.now() + Math.random(),
+          data: e.target.result
+        });
+        renderPhotosGallery();
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function renderPhotosGallery() {
+    document.getElementById('imagesGallery').innerHTML = currentPhotos.map(photo => `
+      <div class="image-item">
+        <img src="${photo.data}" alt="صورة">
+        <button class="remove-img" onclick="removePhoto('${photo.id}')">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function removePhoto(photoId) {
+    currentPhotos = currentPhotos.filter(p => p.id != photoId);
+    renderPhotosGallery();
+  }
+
+  function setLocationFromInputs() {
+    const lat = parseFloat(document.getElementById('inputLat').value);
+    const lng = parseFloat(document.getElementById('inputLng').value);
+
+    if (isNaN(lat) || isNaN(lng)) {
+      showMessage('⚠️ أدخل خط العرض وخط الطول صح');
+      return;
+    }
+
+    if (lat < 22 || lat > 32 || lng < 24 || lng > 37) {
+      showMessage('⚠️ الإحداثيات خارج نطاق مصر');
+      return;
+    }
+
+    currentPoint = { lat, lng };
+    document.getElementById('mapPreview').innerHTML = `
+      ✅ تم حفظ الموقع<br>
+      خط العرض: ${lat.toFixed(6)}<br>
+      خط الطول: ${lng.toFixed(6)}
+    `;
+    showMessage('✅ تم تحديد الموقع');
+  }
+
+  function openMapModal() {
+    document.getElementById('mapModal').classList.add('active');
+
+    setTimeout(() => {
+      initializeMap();
+      setTimeout(() => {
+        if (mapInstance) {
+          mapInstance.invalidateSize(true);
+        }
+      }, 300);
+    }, 200);
+  }
+
+  function closeMapModal() {
+    document.getElementById('mapModal').classList.remove('active');
+  }
+
+  function initializeMap() {
+    if (typeof L === 'undefined') {
+      showMessage('❌ مكتبة الخريطة غير محملة');
+      return;
+    }
+
+    const container = document.getElementById('mapContainer');
+    if (!container) {
+      showMessage('❌ عنصر الخريطة غير موجود');
+      return;
+    }
+
+    if (mapInstance) {
+      mapInstance.off();
+      mapInstance.remove();
+      mapInstance = null;
+    }
+
+    container.innerHTML = '';
+
+    mapInstance = L.map('mapContainer').setView(
+      currentPoint ? [currentPoint.lat, currentPoint.lng] : [30.0444, 31.2357],
+      currentPoint ? 18 : 10
+    );
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(mapInstance);
+
+    if (currentPoint) {
+      currentMarker = L.marker([currentPoint.lat, currentPoint.lng]).addTo(mapInstance);
+    } else {
+      currentMarker = null;
+    }
+
+    mapInstance.on('click', function(e) {
+      currentPoint = {
+        lat: e.latlng.lat,
+        lng: e.latlng.lng
+      };
+
+      if (currentMarker) {
+        mapInstance.removeLayer(currentMarker);
+      }
+
+      currentMarker = L.marker([currentPoint.lat, currentPoint.lng]).addTo(mapInstance);
+      showMessage('✅ تم تحديد النقطة');
+    });
+
+    setTimeout(() => {
+      mapInstance.invalidateSize(true);
+    }, 400);
+  }
+
+  function saveMapPoint() {
+    if (!currentPoint) {
+      showMessage('⚠️ اختر نقطة على الخريطة أولاً');
+      return;
+    }
+
+    document.getElementById('inputLat').value = currentPoint.lat;
+    document.getElementById('inputLng').value = currentPoint.lng;
+
+    document.getElementById('mapPreview').innerHTML = `
+      ✅ تم حفظ الموقع<br>
+      خط العرض: ${currentPoint.lat.toFixed(6)}<br>
+      خط الطول: ${currentPoint.lng.toFixed(6)}
+    `;
+
+    closeMapModal();
+    showMessage('✅ تم حفظ الموقع');
+  }
+
+  function openAddModal() {
+    currentEditId = null;
+    currentPhotos = [];
+    currentPoint = null;
+    currentMarker = null;
+
+    document.getElementById('modalTitle').textContent = 'إضافة محضر جديد';
+    document.getElementById('addForm').reset();
+
+    const now = new Date();
+    document.getElementById('formYear').value = now.getFullYear();
+    document.getElementById('formDay').value = now.getDate();
+    document.getElementById('formMonth').value = now.getMonth() + 1;
+    document.getElementById('formDateYear').value = now.getFullYear();
+
+    document.getElementById('imagesGallery').innerHTML = '';
+    document.getElementById('mapPreview').innerHTML = '';
+    document.getElementById('inputLat').value = '';
+    document.getElementById('inputLng').value = '';
+    document.getElementById('addModal').classList.add('active');
+  }
+
+  function closeModal() {
+    document.getElementById('addModal').classList.remove('active');
+  }
+
+  function editRecord(id) {
+    const record = allData.find(r => r.id === id);
+    if (!record) return;
+
+    currentEditId = id;
+    currentPhotos = record.photos || [];
+    currentPoint = record.location ? { ...record.location } : null;
+    currentMarker = null;
+
+    document.getElementById('modalTitle').textContent = 'تعديل المحضر';
+    document.getElementById('formName').value = record.name || '';
+    document.getElementById('formBranch').value = record.branch || '';
+    document.getElementById('formDescription').value = record.description || '';
+    document.getElementById('formArea').value = record.area || '';
+    document.getElementById('formRecordNumber').value = record.recordNumber || '';
+    document.getElementById('formYear').value = record.year || '';
+    document.getElementById('formRemovalDecisionNumber').value = record.removalDecisionNumber || '';
+    document.getElementById('formRemovalDecisionYear').value = record.removalDecisionYear || '';
+    document.getElementById('formField').value = record.field || '';
+    document.getElementById('formKilometer').value = record.kilometer || '';
+    document.getElementById('formValue').value = record.value || '';
+    document.getElementById('formVillage').value = record.village || '';
+    document.getElementById('formCenter').value = record.center || '';
+    document.getElementById('formStatus').value = record.status || 'معلقة';
+    document.getElementById('formOriginalStatus').value = record.status || '';
+    document.getElementById('formDay').value = record.day || '';
+    document.getElementById('formMonth').value = record.month || '';
+    document.getElementById('formDateYear').value = record.dateYear || '';
+    document.getElementById('inputLat').value = currentPoint ? currentPoint.lat : '';
+    document.getElementById('inputLng').value = currentPoint ? currentPoint.lng : '';
+    renderPhotosGallery();
+
+    document.getElementById('mapPreview').innerHTML = currentPoint ? `
+      ✅ تم حفظ الموقع<br>
+      خط العرض: ${currentPoint.lat.toFixed(6)}<br>
+      خط الطول: ${currentPoint.lng.toFixed(6)}
+    ` : '';
+
+    document.getElementById('addModal').classList.add('active');
+  }
+
+  function saveRecord(e) {
+    e.preventDefault();
+
+    const record = {
+      id: currentEditId || (allData.length > 0 ? Math.max(...allData.map(r => r.id)) + 1 : 1),
+      name: document.getElementById('formName').value.trim(),
+      branch: document.getElementById('formBranch').value.trim(),
+      description: document.getElementById('formDescription').value.trim(),
+      area: parseFloat(document.getElementById('formArea').value) || null,
+      recordNumber: parseInt(document.getElementById('formRecordNumber').value) || 0,
+      year: parseInt(document.getElementById('formYear').value) || new Date().getFullYear(),
+      removalDecisionNumber: parseInt(document.getElementById('formRemovalDecisionNumber').value) || null,
+      removalDecisionYear: parseInt(document.getElementById('formRemovalDecisionYear').value) || null,
+      field: document.getElementById('formField').value.trim(),
+      kilometer: parseFloat(document.getElementById('formKilometer').value) || null,
+      value: parseFloat(document.getElementById('formValue').value) || null,
+      village: document.getElementById('formVillage').value.trim(),
+      center: document.getElementById('formCenter').value.trim(),
+      status: document.getElementById('formStatus').value || document.getElementById('formOriginalStatus').value || 'معلقة',
+      day: parseInt(document.getElementById('formDay').value) || null,
+      month: parseInt(document.getElementById('formMonth').value) || null,
+      dateYear: parseInt(document.getElementById('formDateYear').value) || null,
+      photos: currentPhotos,
+      location: currentPoint ? { ...currentPoint } : null,
+      bearing: currentPoint ? findNearestDrainBearing(currentPoint.lat, currentPoint.lng) : 0
+    };
+
+    if (!record.name) {
+      alert('اسم المخالف مطلوب');
+      return;
+    }
+
+    if (!record.recordNumber) {
+      alert('رقم المحضر مطلوب');
+      return;
+    }
+
+    if (currentEditId) {
+      const index = allData.findIndex(r => r.id === currentEditId);
+      if (index !== -1) allData[index] = record;
+    } else {
+      allData.push(record);
+    }
+
+    saveDataToStorage();
+    showMessage('✅ تم حفظ المحضر');
+    closeModal();
+    applyFilters();
+    renderCharts();
+  }
+
+  function deleteRecord(id) {
+    if (!confirm('هل تريد حذف هذا المحضر؟')) return;
+
+    allData = allData.filter(r => r.id !== id);
+    saveDataToStorage();
+    showMessage('✅ تم الحذف');
+    applyFilters();
+    renderCharts();
+  }
+
+  function deleteSelected() {
+    if (selectedRows.size === 0) {
+      alert('اختر محاضر أولاً');
+      return;
+    }
+
+    if (!confirm(`حذف ${selectedRows.size} محضر؟`)) return;
+
+    const count = selectedRows.size;
+    allData = allData.filter(r => !selectedRows.has(r.id));
+    selectedRows.clear();
+    saveDataToStorage();
+    showMessage(`✅ تم حذف ${count} محضر`);
+    applyFilters();
+    renderCharts();
+  }
+
+  function viewDetails(id) {
+    const record = allData.find(r => r.id === id);
+    if (!record) return;
+
+    let html = `
+      <div style="text-align: right; max-height: 500px; overflow-y: auto;">
+        <button class="details-modal-close" onclick="this.closest('.modal').remove()">✕ إغلاق</button>
+        <h3>${escapeHtml(record.name)}</h3>
+        <p><strong>المصرف:</strong> ${escapeHtml(record.branch || '-')}</p>
+        <p><strong>المخالفة:</strong> ${escapeHtml(record.description || '-')}</p>
+        <p><strong>المساحة:</strong> ${record.area ?? '-'}</p>
+        <p><strong>رقم المحضر:</strong> ${escapeHtml((record.recordNumber || '-') + '/' + (record.year || '-'))}</p>
+        <p><strong>رقم قرار الإزالة:</strong> ${record.removalDecisionNumber && record.removalDecisionYear ? escapeHtml(record.removalDecisionNumber + '/' + record.removalDecisionYear) : '-'}</p>
+        <p><strong>البر:</strong> ${escapeHtml(record.field || '-')}</p>
+        <p><strong>الكيلومتر:</strong> ${record.kilometer ?? '-'}</p>
+        <p><strong>القيمة:</strong> ${record.value ?? '-'}</p>
+        <p><strong>التاريخ:</strong> ${(record.day && record.month && record.dateYear) ? escapeHtml(record.day + '/' + record.month + '/' + record.dateYear) : '-'}</p>
+        <p><strong>البلد:</strong> ${escapeHtml(record.village || '-')}</p>
+        <p><strong>المركز:</strong> ${escapeHtml(record.center || '-')}</p>
+        <p><strong>الحالة:</strong> ${escapeHtml(record.status || '-')}</p>
+    `;
+
+    if (record.location && record.location.lat) {
+      html += `
+        <p><strong>الموقع:</strong> 📍 محدد</p>
+        <p><strong>خط العرض:</strong> ${record.location.lat.toFixed(6)}</p>
+        <p><strong>خط الطول:</strong> ${record.location.lng.toFixed(6)}</p>
+      `;
+    }
+
+    if (record.photos && record.photos.length > 0) {
+      html += `<h4 style="margin-top:15px;">الصور:</h4><div class="images-gallery">`;
+      record.photos.forEach(photo => {
+        html += `<div class="image-item"><img src="${photo.data}" alt="صورة"></div>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal active';
+    modal.innerHTML = `<div class="modal-content" style="max-width: 600px;">${html}</div>`;
+    document.body.appendChild(modal);
+  }
+
+  function exportToExcel() {
+    const data = selectedRows.size > 0
+      ? filteredData.filter(r => selectedRows.has(r.id))
+      : filteredData;
+
+    if (data.length === 0) {
+      alert('لا توجد بيانات للتصدير');
+      return;
+    }
+
+    const exportData = data.map(item => ({
+      'اسم المخالف': item.name,
+      'المصرف': item.branch || '-',
+      'المخالفة': item.description || '-',
+      'المساحة': item.area || '-',
+      'رقم المحضر': item.recordNumber,
+      'سنة المحضر': item.year,
+      'رقم قرار الإزالة': item.removalDecisionNumber || '-',
+      'سنة القرار': item.removalDecisionYear || '-',
+      'البر': item.field || '-',
+      'الكيلومتر': item.kilometer || '-',
+      'القيمة': item.value || '-',
+      'اليوم': item.day || '-',
+      'الشهر': item.month || '-',
+      'سنة التاريخ': item.dateYear || '-',
+      'البلد': item.village || '-',
+      'المركز': item.center || '-',
+      'الحالة': item.status,
+      // الأعمدة الجديدة في آخر الشيت (تقابل T و U عند إعادة الاستيراد)
+      'X (خط العرض)': item.location?.lat ?? '-',
+      'Y (خط الطول)': item.location?.lng ?? '-'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'المحاضر');
+    XLSX.writeFile(wb, `محاضر_${new Date().toISOString().split('T')[0]}.xlsx`);
+    showMessage('✅ تم تصدير Excel');
+}
+
+  function importExcel() {
+    document.getElementById('excelFile').click();
+  }
+
+function handleExcelImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        const imported = [];
+
+        for (let row = range.s.r + 1; row <= range.e.r; row++) {
+          const cells = {
+            name: worksheet[XLSX.utils.encode_cell({r: row, c: 1})]?.v,
+            branch: worksheet[XLSX.utils.encode_cell({r: row, c: 3})]?.v,
+            description: worksheet[XLSX.utils.encode_cell({r: row, c: 4})]?.v,
+            area: worksheet[XLSX.utils.encode_cell({r: row, c: 5})]?.v,
+            recordNumber: worksheet[XLSX.utils.encode_cell({r: row, c: 6})]?.v,
+            year: worksheet[XLSX.utils.encode_cell({r: row, c: 7})]?.v,
+            day: worksheet[XLSX.utils.encode_cell({r: row, c: 8})]?.v,
+            month: worksheet[XLSX.utils.encode_cell({r: row, c: 9})]?.v,
+            dateYear: worksheet[XLSX.utils.encode_cell({r: row, c: 10})]?.v,
+            removalDecisionNumber: worksheet[XLSX.utils.encode_cell({r: row, c: 11})]?.v,
+            removalDecisionYear: worksheet[XLSX.utils.encode_cell({r: row, c: 12})]?.v,
+            field: worksheet[XLSX.utils.encode_cell({r: row, c: 13})]?.v,
+            kilometer: worksheet[XLSX.utils.encode_cell({r: row, c: 14})]?.v,
+            value: worksheet[XLSX.utils.encode_cell({r: row, c: 15})]?.v,
+            village: worksheet[XLSX.utils.encode_cell({r: row, c: 16})]?.v,
+            center: worksheet[XLSX.utils.encode_cell({r: row, c: 17})]?.v,
+            status: worksheet[XLSX.utils.encode_cell({r: row, c: 18})]?.v,
+            // الجديد: عمود S = index 18 (هو نفسه status القديم)، عمود T = index 19، عمود U = index 20
+            statusFromS: worksheet[XLSX.utils.encode_cell({r: row, c: 18})]?.v,
+            lat: worksheet[XLSX.utils.encode_cell({r: row, c: 19})]?.v,
+            lng: worksheet[XLSX.utils.encode_cell({r: row, c: 20})]?.v
+          };
+
+          if (!cells.name && !cells.recordNumber) continue;
+
+          const newId = allData.length > 0
+            ? Math.max(...allData.map(r => r.id)) + imported.length + 1
+            : imported.length + 1;
+
+          // تحديد الحالة من عمود S (اختياري: تطمين القيمة لو مكتوبة بشكل مختلف)
+          let statusValue = cells.statusFromS 
+          ? cells.statusFromS.toString().trim() 
+          : '';
+
+          // تحديد الموقع من T (lat) و U (lng)
+          let location = null;
+          const latNum = parseFloat(cells.lat);
+          const lngNum = parseFloat(cells.lng);
+          if (!isNaN(latNum) && !isNaN(lngNum)) {
+            location = { lat: latNum, lng: lngNum };
+          }
+
+          imported.push({
+            id: newId,
+            name: cells.name ? cells.name.toString().trim() : '',
+            branch: cells.branch ? cells.branch.toString().trim() : '',
+            description: cells.description ? cells.description.toString().trim() : '',
+            area: cells.area ? parseFloat(cells.area) : null,
+            recordNumber: cells.recordNumber ? parseInt(cells.recordNumber) : 0,
+            year: cells.year ? parseInt(cells.year) : new Date().getFullYear(),
+            day: cells.day ? parseInt(cells.day) : null,
+            month: cells.month ? parseInt(cells.month) : null,
+            dateYear: cells.dateYear ? parseInt(cells.dateYear) : null,
+            removalDecisionNumber: cells.removalDecisionNumber ? parseInt(cells.removalDecisionNumber) : null,
+            removalDecisionYear: cells.removalDecisionYear ? parseInt(cells.removalDecisionYear) : null,
+            field: cells.field ? cells.field.toString().trim() : '',
+            kilometer: cells.kilometer ? parseFloat(cells.kilometer) : null,
+            value: cells.value ? parseFloat(cells.value) : null,
+            village: cells.village ? cells.village.toString().trim() : '',
+            center: cells.center ? cells.center.toString().trim() : '',
+            status: statusValue,
+            photos: [],
+            location: location
+          });
+        }
+
+        if (imported.length === 0) throw new Error('لم يتم العثور على بيانات صالحة');
+
+        allData.push(...imported);
+        saveDataToStorage();
+        showMessage(`✅ تم استيراد ${imported.length} محضر`);
+        document.getElementById('excelFile').value = '';
+        applyFilters();
+        renderCharts();
+      } catch (error) {
+        console.error('خطأ الاستيراد:', error);
+        alert('❌ خطأ في الاستيراد: ' + error.message);
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
+
+  function exportToPDF() {
+    const data = selectedRows.size > 0
+      ? filteredData.filter(r => selectedRows.has(r.id))
+      : filteredData;
+
+    if (data.length === 0) {
+      alert('لا توجد بيانات للتصدير');
+      return;
+    }
+
+    let tableHTML = `
+      <table style="width:100%; border-collapse: collapse; font-size: 11px; direction: rtl;">
+        <thead>
+          <tr style="background-color: #1976d2; color: white;">
+            <th style="border: 1px solid #ddd; padding: 5px;">#</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">المخالف</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">المصرف</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">المخالفة</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">المساحة</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">المحضر</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">القرار</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">القيمة</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">التاريخ</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">الحالة</th>
+            <th style="border: 1px solid #ddd; padding: 5px;">الموقع</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    data.forEach((item, index) => {
+      tableHTML += `
+        <tr>
+          <td style="border: 1px solid #ddd; padding: 5px;">${index + 1}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${escapeHtml(item.name)}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${escapeHtml(item.branch || '-')}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${escapeHtml(item.description || '-')}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${item.area ?? '-'}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${escapeHtml((item.recordNumber || '-') + '/' + (item.year || '-'))}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${item.removalDecisionNumber && item.removalDecisionYear ? escapeHtml(item.removalDecisionNumber + '/' + item.removalDecisionYear) : '-'}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${item.value ?? '-'}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${item.day && item.month && item.dateYear ? escapeHtml(item.day + '/' + item.month + '/' + item.dateYear) : '-'}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${escapeHtml(item.status || '-')}</td>
+          <td style="border: 1px solid #ddd; padding: 5px;">${item.location ? '📍 محدد' : '-'}</td>
+        </tr>
+      `;
+    });
+
+    tableHTML += `</tbody></table>`;
+
+    const element = document.createElement('div');
+    element.innerHTML = `
+      <div style="padding: 20px;">
+        <h1 style="text-align: center; color: #1976d2; margin-bottom: 20px;">بيان محاضر الإزالات</h1>
+        ${tableHTML}
+      </div>
+    `;
+
+    html2pdf().set({
+      margin: [10, 10, 10, 10],
+      filename: `محاضر_${new Date().toISOString().split('T')[0]}.pdf`,
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+    }).from(element).save();
+
+    showMessage('✅ تم تصدير PDF');
+  }
+
+  function metersToLat(meters) {
+    return meters / 111320;
+  }
+
+  function metersToLng(meters, lat) {
+    return meters / (111320 * Math.cos(lat * Math.PI / 180));
+  }
+
+  function createRectangleCoordinates(lat, lng, area, bearing) {
+  const actualArea = area && area > 0 ? area : DEFAULT_AREA;
+  const width = Math.sqrt(actualArea / LENGTH_WIDTH_RATIO);
+  const length = LENGTH_WIDTH_RATIO * width;
+  const halfWidth = width / 2;
+  const halfLength = length / 2;
+  const angle = (bearing || 0) * Math.PI / 180;
+  function offsetPoint(lat, lng, dAlong, dPerp) {
+    const dLat_along = (dAlong * Math.cos(angle)) / 111320;
+    const dLng_along = (dAlong * Math.sin(angle)) / (111320 * Math.cos(lat * Math.PI / 180));
+    const dLat_perp = (-dPerp * Math.sin(angle)) / 111320;
+    const dLng_perp = (dPerp * Math.cos(angle)) / (111320 * Math.cos(lat * Math.PI / 180));
+    return [lng + dLng_along + dLng_perp, lat + dLat_along + dLat_perp];
+  }
+  const topLeft     = offsetPoint(lat, lng, +halfLength, -halfWidth);
+  const topRight    = offsetPoint(lat, lng, +halfLength, +halfWidth);
+  const bottomRight = offsetPoint(lat, lng, -halfLength, +halfWidth);
+  const bottomLeft  = offsetPoint(lat, lng, -halfLength, -halfWidth);
+  return [topLeft, topRight, bottomRight, bottomLeft, topLeft];
+}
+
+  function generateKMLForRecords(records, docName) {
+    let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>${xmlEscape(docName)}</name>
+  <open>1</open>
+  <description>محاضر الإزالات</description>
+  <Style id="polygonStyle">
+    <PolyStyle>
+      <fill>1</fill>
+      <color>7f0000ff</color>
+    </PolyStyle>
+    <LineStyle>
+      <color>ff0000ff</color>
+      <width>2</width>
+    </LineStyle>
+  </Style>`;
+
+    records.forEach((record) => {
+      if (!record.location || !record.location.lat || !record.location.lng) return;
+
+      const bearing = record.bearing || findNearestDrainBearing(record.location.lat, record.location.lng);
+      const coords = createRectangleCoordinates(
+       record.location.lat,
+       record.location.lng,
+       record.area,
+       bearing
+    ).map(c => `${c[0]},${c[1]},0`).join(' ');
+
+      const areaUsed = record.area && record.area > 0 ? record.area : DEFAULT_AREA;
+
+      kml += `
+  <Placemark>
+    <name>${xmlEscape(record.name || 'بدون اسم')} - محضر ${xmlEscape(String(record.recordNumber || ''))}</name>
+    <description>${xmlEscape(`محضر رقم ${record.recordNumber || '-'} / ${record.year || '-'} - مساحة ${areaUsed} م2`)}</description>
+    <styleUrl>#polygonStyle</styleUrl>
+    <Polygon>
+      <outerBoundaryIs>
+        <LinearRing>
+          <coordinates>${coords}</coordinates>
+        </LinearRing>
+      </outerBoundaryIs>
+    </Polygon>
+  </Placemark>`;
+    });
+
+    kml += `
+</Document>
+</kml>`;
+
+    return kml;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function showKMLExportOptions() {
+    const data = selectedRows.size > 0
+      ? filteredData.filter(r => selectedRows.has(r.id))
+      : filteredData;
+
+    const recordsWithLocation = data.filter(r => r.location && r.location.lat && r.location.lng);
+
+    if (recordsWithLocation.length === 0) {
+      alert('لا توجد مواقع محددة للتصدير');
+      return;
+    }
+
+    document.getElementById('kmlModal').classList.add('active');
+  }
+
+  function closeKMLModal() {
+    document.getElementById('kmlModal').classList.remove('active');
+  }
+
+  async function exportKMLSeparate() {
+    const data = selectedRows.size > 0
+      ? filteredData.filter(r => selectedRows.has(r.id))
+      : filteredData;
+
+    const recordsWithLocation = data.filter(r => r.location && r.location.lat && r.location.lng);
+
+    if (recordsWithLocation.length === 0) {
+      alert('لا توجد مواقع محددة للتصدير');
+      return;
+    }
+
+    const zip = new JSZip();
+
+    recordsWithLocation.forEach(record => {
+      const kml = generateKMLForRecords([record], record.name || 'محضر');
+      const safeName = (record.name || 'record').replace(/[\\/:*?"<>|]/g, '_');
+      zip.file(`${safeName}.kml`, kml);
+    });
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    downloadBlob(blob, `KML_Separate_${new Date().toISOString().split('T')[0]}.zip`);
+    showMessage(`✅ تم تصدير ${recordsWithLocation.length} ملف KML`);
+    closeKMLModal();
+  }
+
+  function exportKMLSingle() {
+    const data = selectedRows.size > 0
+      ? filteredData.filter(r => selectedRows.has(r.id))
+      : filteredData;
+
+    const recordsWithLocation = data.filter(r => r.location && r.location.lat && r.location.lng);
+
+    if (recordsWithLocation.length === 0) {
+      alert('لا توجد مواقع محددة للتصدير');
+      return;
+    }
+
+    const kml = generateKMLForRecords(recordsWithLocation, 'محاضر الإزالات');
+    const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+    downloadBlob(blob, `محاضر_${new Date().toISOString().split('T')[0]}.kml`);
+    showMessage('✅ تم تصدير KML موحد');
+    closeKMLModal();
+  }
+
+  function renderCharts() {
+    const yearCounts = {};
+    const statusCounts = { 'منفذة': 0, 'قيد التنفيذ': 0, 'معلقة': 0 };
+
+    allData.forEach(item => {
+      if (item.year) {
+        yearCounts[item.year] = (yearCounts[item.year] || 0) + 1;
+      }
+      if (statusCounts[item.status] !== undefined) {
+        statusCounts[item.status]++;
+      }
+    });
+
+    const years = Object.keys(yearCounts).sort((a, b) => a - b);
+    const counts = years.map(y => yearCounts[y]);
+
+    const isDark = !document.body.classList.contains('light-mode');
+    const textColor = isDark ? '#fff' : '#212121';
+    const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+
+    if (barChartInstance) barChartInstance.destroy();
+    const barCanvas = document.getElementById('barChart');
+    if (barCanvas) {
+      const barCtx = barCanvas.getContext('2d');
+      barChartInstance = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: years,
+          datasets: [{
+            label: 'عدد المحاضر',
+            data: counts,
+            backgroundColor: 'rgba(25, 118, 210, 0.8)',
+            borderColor: '#1565c0',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: textColor } } },
+          scales: {
+            x: { ticks: { color: textColor }, grid: { color: gridColor } },
+            y: { ticks: { color: textColor }, grid: { color: gridColor }, beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    if (pieChartInstance) pieChartInstance.destroy();
+    const pieCanvas = document.getElementById('pieChart');
+    if (pieCanvas) {
+      const pieCtx = pieCanvas.getContext('2d');
+      pieChartInstance = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['منفذة', 'قيد التنفيذ', 'معلقة'],
+          datasets: [{
+            data: [statusCounts['منفذة'], statusCounts['قيد التنفيذ'], statusCounts['معلقة']],
+            backgroundColor: ['#4caf50', '#ff9800', '#f44336'],
+            borderColor: isDark ? '#1e1e1e' : '#fff',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: textColor } } }
+        }
+      });
+    }
+  }
+
+  function toggleDarkMode() {
+    document.body.classList.toggle('light-mode');
+    const isDark = !document.body.classList.contains('light-mode');
+    document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+    localStorage.setItem('darkMode', isDark ? 'dark' : 'light');
+    renderCharts();
+  }
+
+function handleKMLDrainsImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const content = event.target.result;
+      drainsData = [];
+
+      // استخراج الـ coordinates بـ regex مباشرة من النص
+      const placemarkRegex = /<Placemark[\s\S]*?<\/Placemark>/gi;
+      const placemarks = content.match(placemarkRegex) || [];
+
+      placemarks.forEach(placemark => {
+        // لازم يكون LineString
+        if (!placemark.includes('LineString')) return;
+
+        const nameMatch = placemark.match(/<name>([\s\S]*?)<\/name>/i);
+        const name = nameMatch ? nameMatch[1].trim() : '';
+
+        const coordsMatch = placemark.match(/<coordinates>([\s\S]*?)<\/coordinates>/i);
+        if (!coordsMatch) return;
+
+        const points = coordsMatch[1].trim().split(/\s+/).map(c => {
+          const parts = c.split(',');
+          return { lng: parseFloat(parts[0]), lat: parseFloat(parts[1]) };
+        }).filter(p => !isNaN(p.lat) && !isNaN(p.lng));
+
+        if (points.length >= 2) {
+          drainsData.push({ name, points });
+        }
+      });
+
+      document.getElementById('kmlDrainsFile').value = '';
+      showMessage(`✅ تم تحميل ${drainsData.length} مصرف`);
+    } catch (error) {
+      alert('❌ خطأ: ' + error.message);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function findNearestDrainBearing(lat, lng) {
+  if (!drainsData || drainsData.length === 0) return 0;
+
+  let minDist = Infinity;
+  let bestBearing = 0;
+
+  drainsData.forEach(drain => {
+    drain.points.forEach((point, i) => {
+      const dist = Math.sqrt(
+        Math.pow(point.lat - lat, 2) + Math.pow(point.lng - lng, 2)
+      );
+      if (dist < minDist) {
+        minDist = dist;
+        const nextPoint = drain.points[i + 1] || drain.points[i - 1];
+        if (nextPoint) {
+          bestBearing = calculateBearing(point, nextPoint);
+        }
+      }
+    });
+  });
+
+  return bestBearing;
+}
+
+function calculateBearing(pointA, pointB) {
+  const dLng = (pointB.lng - pointA.lng) * Math.cos((pointA.lat + pointB.lat) / 2 * Math.PI / 180);
+  const dLat = pointB.lat - pointA.lat;
+  let angle = Math.atan2(dLng, dLat) * 180 / Math.PI;
+  if (angle < 0) angle += 360;
+  return angle;
+}
+
+  function showMessage(message, duration = 2500) {
+    const msg = document.getElementById('successMessage');
+    msg.textContent = message;
+    msg.style.display = 'block';
+    clearTimeout(showMessage._timer);
+    showMessage._timer = setTimeout(() => { msg.style.display = 'none'; }, duration);
+  }
+
+  document.getElementById('addModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'addModal') closeModal();
+  });
+
+  document.getElementById('mapModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'mapModal') closeMapModal();
+  });
+
+  document.getElementById('kmlModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'kmlModal') closeKMLModal();
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
+
+</body>
+</html>
